@@ -1,68 +1,54 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## What is it?
 
-## Available Scripts
+This is a demo repository to visualize a problem of using `ESlint` together with `react-hooks/exhaustive-deps` when it is necessary to pass a variable of type `Array` to hook‘s dependency array
 
-In the project directory, you can run:
+<img src="https://user-images.githubusercontent.com/4083977/56232999-4a60a580-60ac-11e9-9853-2718118bcd5f.png" width="400" />
 
-### `npm start`
+## Context
 
-Runs the app in the development mode.<br>
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+React hooks have a way to pass `dependencies` as an array:
+```
+useEffect(() => {
+  ...
+}, [dependency1,dependency2]);
+```
+However, those dependencies are compared `shallowly` and that means if a `dependency` is of type `Array` React will not be able to detect changes within that array and it is necessary to calculate a derivative value of this array (_e.g._ `array.join(',')`).
+Similar suggestions were given by different authors: [inventingwithmonster.io](https://inventingwithmonster.io/20190207-how-to-fix-final-argument-passed-to-useeffect-changed-size-between-renders/) or [facebook/react#14324 (comment)](https://github.com/facebook/react/issues/14324#issuecomment-441489421)
 
-The page will reload if you make edits.<br>
-You will also see any lint errors in the console.
+## The problem
 
-### `npm test`
+`react-hooks/exhaustive-deps` is not able to detect that `derived value` is calculated for the `dependency`, an example of this can be seen here: [src/Toasts.js#L27](https://github.com/lukaskl/exhaustive-deps-and-array-variables/blob/master/src/Toasts.js#L27)
 
-Launches the test runner in the interactive watch mode.<br>
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+![image](https://user-images.githubusercontent.com/4083977/56234771-328b2080-60b0-11e9-8d6c-402a1f120ef9.png)
 
-### `npm run build`
+also the suggested `auto fix` for this `eslint problem` actually breaks the code, as it changes 
+```
+  useEffect(() => {
+    setHeights(heights => calculateHeights(childKeys, refs, heights));
+  }, [childKeys.join(',')]);
+```
+to
+```
+  useEffect(() => {
+    setHeights(heights => calculateHeights(childKeys, refs, heights));
+  }, [childKeys]);
+```
 
-Builds the app for production to the `build` folder.<br>
-It correctly bundles React in production mode and optimizes the build for the best performance.
+which leads to an `infinity loop`
 
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
+## The question
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+I know that there is a workaround - simply disable the rule for a single line
+```
+// eslint-disable-next-line react-hooks/exhaustive-deps
+```
+However, it is barely desired outcome.
 
-### `npm run eject`
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+So I have a question of either:
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+a) maybe this situation is antipattern in the first place and there is an objective suggestion how to transform components that all dependencies would consist only of `primitive` types?
 
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+b) maybe it is worth to extend `exhaustive-deps` rule by adding an option, that the `derived value` of a `dependency` would be recognised as the `dependency` itself? 
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
-
-### Analyzing the Bundle Size
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
-
-### Making a Progressive Web App
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
-
-### Advanced Configuration
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
-
-### Deployment
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
-
-### `npm run build` fails to minify
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
